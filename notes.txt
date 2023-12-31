@@ -1,0 +1,9 @@
+TO DO's:
+-more sequelize validations + display those error messages
+
+
+
+MODELS:
+User(fname:string, lname:string, email:string, password:string, isMember:boolean, isAdmin:boolean)
+
+Message(title:string,body:text,userId:integer)
