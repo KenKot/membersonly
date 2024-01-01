@@ -1,6 +1,5 @@
 <nav class="navbar navbar-default">
   <div class="container-fluid">
-    <!-- Brand and toggle get grouped for better mobile display -->
     <div class="navbar-header">
       <button
         type="button"
@@ -19,10 +18,19 @@
 
     <div class="collapse navbar-collapse" id="main-nav-collapse">
       <ul class="nav navbar-nav navbar-right">
+        <% if(currentUser) {%>
+
+        <li>
+          <a href="/signout" class="btn btn-default navbar-btn">Sign Out</a>
+        </li>
+
+        <% } else {%>
         <li>
           <a href="/signup" class="btn btn-default navbar-btn">Sign Up</a>
         </li>
         <li><a href="/login" class="btn btn-default navbar-btn">Log In</a></li>
+
+        <% } %>
       </ul>
     </div>
   </div>
