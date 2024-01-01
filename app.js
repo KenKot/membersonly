@@ -7,7 +7,7 @@ const methodOverride = require("method-override");
 app.use(methodOverride("_method"));
 
 app.use(logger("dev"));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({extended: false}));
 
 // ===================================================
 // EJS / CSS
@@ -37,28 +37,25 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({extended: false}));
 
 passport.use(
-  new LocalStrategy(
-    { usernameField: "email" },
-    async (email, password, done) => {
-      try {
-        const user = await User.findOne({ where: { email: email } });
-        if (!user) {
-          return done(null, false, { message: "Incorrect email" });
-        }
-        const match = await bcrypt.compare(password, user.password);
-        if (!match) {
-          // passwords do not match!
-          return done(null, false, { message: "Incorrect password" });
-        }
-        return done(null, user);
-      } catch (err) {
-        return done(err);
+  new LocalStrategy({usernameField: "email"}, async (email, password, done) => {
+    try {
+      const user = await User.findOne({where: {email: email}});
+      if (!user) {
+        return done(null, false, {message: "Incorrect email"});
       }
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
+        // passwords do not match!
+        return done(null, false, {message: "Incorrect password"});
+      }
+      return done(null, user);
+    } catch (err) {
+      return done(err);
     }
-  )
+  })
 );
 
 passport.serializeUser((user, done) => {
@@ -83,6 +80,11 @@ app.use((req, res, next) => {
 });
 
 // ===================================================
+// EXPRESS VALIDATOR
+// ===================================================
+const {body, validationResult} = require("express-validator");
+
+// ===================================================
 // ROUTES
 // ===================================================
 const models = require("./models");
@@ -92,9 +94,9 @@ const Message = models.Message;
 app.get("/", async (req, res) => {
   try {
     const messages = await Message.findAll({
-      include: [{ model: models.User }],
+      include: [{model: models.User}],
     });
-    res.render("messages/index", { messages });
+    res.render("messages/index", {messages});
   } catch (error) {
     res.status(500).send("error getting messages");
   }
@@ -106,8 +108,8 @@ app.get("/signup", async (req, res) => {
 
 app.post("/signup", async (req, res, next) => {
   try {
-    const { email, firstName, lastName, password1, password2 } = req.body;
-    const existingUser = await User.findOne({ where: { email } });
+    const {email, firstName, lastName, password1, password2} = req.body;
+    const existingUser = await User.findOne({where: {email}});
 
     if (existingUser)
       return res.status(400).send("User already exists with this email.");
@@ -164,13 +166,13 @@ app.get("/membership", checkAuthenticated, (req, res) => {
 
 app.post("/membership", checkAuthenticated, async (req, res) => {
   try {
-    const { secret } = req.body;
+    const {secret} = req.body;
     const user = await User.findByPk(req.user.id);
 
     if (secret === "admin") {
-      await user.update({ isAdmin: true, isMember: true });
+      await user.update({isAdmin: true, isMember: true});
     } else if (secret === "member") {
-      await user.update({ isMember: true });
+      await user.update({isMember: true});
     }
   } catch (error) {
     res.status(500).send("error");
@@ -180,26 +182,66 @@ app.post("/membership", checkAuthenticated, async (req, res) => {
 });
 
 app.get("/messages/new", checkMember, (req, res) => {
-  res.render("messages/new");
+  res.render("messages/new", {errors: [], messageData: {}});
 });
 
-app.post("/messages/new", checkMember, async (req, res) => {
-  try {
-    const message = await Message.create({
-      userId: req.user.id,
-      title: req.body.title,
-      text: req.body.message,
-    });
+app.post(
+  "/messages/new",
+  checkMember,
+  [
+    body("title")
+      .trim()
+      .isLength({min: 3})
+      .withMessage("Title must be at least 3 chars"),
+    body("message")
+      .trim() // Removes leading and trailing whitespace
+      .isLength({min: 8})
+      .withMessage("Message text must be at least 8 chars"),
+  ],
+  async (req, res) => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      // There are errors. Render form again with sanitized values/error messages.
+      return res.status(400).render("messages/new", {
+        messageData: {title: req.body.title, text: req.body.message}, // changed from req.body.text to req.body.message
+        errors: errors.array(),
+      });
+    }
 
-    res.redirect("/");
-  } catch (error) {
-    res.status(500).send("couldn't create message");
+    // If the input is valid, proceed to create the message
+    try {
+      const message = await Message.create({
+        userId: req.user.id,
+        title: req.body.title,
+        text: req.body.message,
+      });
+
+      res.redirect("/");
+    } catch (error) {
+      // If there's an error in the process, send a 500 status
+      res.status(500).send("couldn't create message");
+    }
   }
-});
+);
+
+// app.post("/messages/new", checkMember, async (req, res) => {
+//   try {
+//     const message = await Message.create({
+//       userId: req.user.id,
+//       title: req.body.title,
+//       text: req.body.message,
+//     });
+
+//     res.redirect("/");
+//   } catch (error) {
+//     res.status(500).send("couldn't create message");
+//   }
+// });
 
 app.delete("/messages/:id", checkAdmin, async (req, res) => {
   try {
-    const result = await Message.destroy({ where: { id: req.params.id } });
+    const result = await Message.destroy({where: {id: req.params.id}});
     console.log("!!!!!!!!!!!!!!!!");
     console.log(result);
     console.log("!!!!!!!!!!!!!!!!");
