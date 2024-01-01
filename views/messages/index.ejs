@@ -1,0 +1,25 @@
+<h1>index.ejs</h1>
+<% if (currentUser && currentUser.isMember) {%>
+
+<a href="/messages/new">
+  <button>Create New Message</button>
+</a>
+<% } %> <% if (messages.length) { %> <% messages.forEach(message => { %>
+<h2><%= message.title %></h2>
+<p><%= message.text %></p>
+
+<% if (currentUser && currentUser.isMember) {%>
+<p><%#= message.User.id %></p>
+<p>Author: <%= message.User.firstName %> <%= message.User.lastName %></p>
+<p>
+  Wrote at: <%= message.createdAt.toLocaleString('en-US', { dateStyle: 'medium',
+  timeStyle: 'short' }) %>
+</p>
+
+<% if (currentUser && currentUser.isAdmin) {%>
+<form action="/messages/<%= message.id %>/?_method=DELETE" method="POST">
+  <button type="submit">DELETE</button>
+</form>
+<% } %> <% } %> <% }) %> <% } else { %>
+<p>No Messages yet</p>
+<% } %>
