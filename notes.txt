@@ -2,7 +2,6 @@ TO DO's:
 -more sequelize validations + display those error messages
 
 
-
 MODELS:
 User(fname:string, lname:string, email:string, password:string, isMember:boolean, isAdmin:boolean)
 

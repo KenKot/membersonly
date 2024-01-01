@@ -3,6 +3,8 @@ const app = express();
 const logger = require("morgan");
 const dotenv = require("dotenv");
 dotenv.config();
+const methodOverride = require("method-override");
+app.use(methodOverride("_method"));
 
 app.use(logger("dev"));
 app.use(express.urlencoded({ extended: false }));
@@ -89,7 +91,9 @@ const Message = models.Message;
 
 app.get("/", async (req, res) => {
   try {
-    const messages = await Message.findAll();
+    const messages = await Message.findAll({
+      include: [{ model: models.User }],
+    });
     res.render("messages/index", { messages });
   } catch (error) {
     res.status(500).send("error getting messages");
@@ -131,7 +135,7 @@ app.post("/signup", async (req, res, next) => {
   }
 });
 
-app.get("/login", async (req, res) => {
+app.get("/login", checkNotAuthenticated, async (req, res) => {
   res.render("auth/login");
 });
 
@@ -148,11 +152,97 @@ app.get("/signout", (req, res, next) => {
     if (err) {
       return next(err);
     }
-    res.locals.currentUser = null;
+    // res.locals.currentUser = null;
 
     res.redirect("/");
   });
 });
+
+app.get("/membership", checkAuthenticated, (req, res) => {
+  res.render("membership/new");
+});
+
+app.post("/membership", checkAuthenticated, async (req, res) => {
+  try {
+    const { secret } = req.body;
+    const user = await User.findByPk(req.user.id);
+
+    if (secret === "admin") {
+      await user.update({ isAdmin: true, isMember: true });
+    } else if (secret === "member") {
+      await user.update({ isMember: true });
+    }
+  } catch (error) {
+    res.status(500).send("error");
+  }
+
+  res.redirect("/");
+});
+
+app.get("/messages/new", checkMember, (req, res) => {
+  res.render("messages/new");
+});
+
+app.post("/messages/new", checkMember, async (req, res) => {
+  try {
+    const message = await Message.create({
+      userId: req.user.id,
+      title: req.body.title,
+      text: req.body.message,
+    });
+
+    res.redirect("/");
+  } catch (error) {
+    res.status(500).send("couldn't create message");
+  }
+});
+
+app.delete("/messages/:id", checkAdmin, async (req, res) => {
+  try {
+    const result = await Message.destroy({ where: { id: req.params.id } });
+    console.log("!!!!!!!!!!!!!!!!");
+    console.log(result);
+    console.log("!!!!!!!!!!!!!!!!");
+    res.redirect("/");
+  } catch (error) {
+    console.log("error: ", error);
+    res.status(500).send("Couldnt delete");
+  }
+});
+
+// ===================================================
+// HELPERS
+// ===================================================
+function checkMember(req, res, next) {
+  if (req.user && req.user.isMember) {
+    return next();
+  }
+
+  res.redirect("/");
+}
+
+function checkAdmin(req, res, next) {
+  if (req.user.isAdmin) {
+    return next();
+  }
+
+  res.redirect("/");
+}
+
+function checkAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+
+  res.redirect("/login");
+}
+
+function checkNotAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return res.redirect("/");
+  }
+  next();
+}
 
 app.listen(3000, (req, res) => {
   console.log("Listening on port 3000");

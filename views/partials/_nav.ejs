@@ -23,8 +23,14 @@
         <li>
           <a href="/signout" class="btn btn-default navbar-btn">Sign Out</a>
         </li>
+        <% if(!currentUser.isMember) {%>
 
-        <% } else {%>
+        <li>
+          <a href="/membership" class="btn btn-default navbar-btn"
+            >Join Membership</a
+          >
+        </li>
+        <% } %> <% } else {%>
         <li>
           <a href="/signup" class="btn btn-default navbar-btn">Sign Up</a>
         </li>
